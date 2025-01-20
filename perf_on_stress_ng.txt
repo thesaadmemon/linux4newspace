@@ -1,0 +1,55 @@
+docker run --rm -it --privileged  --cap-add SYS_ADMIN  --security-opt seccomp=unconfined 3e46f73e3528 bash docker run --rm -it --privileged  --cap-add SYS_ADMIN  --security-opt seccomp=unconfined 3e46f73e3528 bash
+apt update
+apt install linux-perf nano
+ln -sf /usr/bin/perf_5.10 /usr/bin/perf
+
+nano perf_stress_comparison.sh
+
+#!/bin/bash
+
+# Define the stress-ng command
+STRESS_CMD="stress-ng --cpu 4 --vm 2 --vm-bytes 128M --timeout 60s"
+
+# Output file for performance data
+OUTPUT_FILE="perf_metrics_comparison.txt"
+
+# Function to run perf and capture metrics
+run_perf() {
+    local mode=$1  # Mode: "stress-ng" or "idle"
+    echo "Running perf for mode: $mode" >> $OUTPUT_FILE
+    echo "------------------------------------" >> $OUTPUT_FILE
+    if [ "$mode" == "stress-ng" ]; then
+        # Run perf while executing stress-ng
+        perf stat -e cycles,instructions,cache-references,cache-misses,context-switches,page-faults \
+            -- $STRESS_CMD &>> $OUTPUT_FILE
+    else
+        # Run perf without stress-ng (idle system)
+        perf stat -e cycles,instructions,cache-references,cache-misses,context-switches,page-faults \
+            sleep 60 &>> $OUTPUT_FILE
+    fi
+    echo -e "\n" >> $OUTPUT_FILE
+}
+
+# Prepare output file
+echo "Performance Metrics Comparison" > $OUTPUT_FILE
+echo "======================================" >> $OUTPUT_FILE
+echo "Stress-ng Command: $STRESS_CMD" >> $OUTPUT_FILE
+echo -e "\n" >> $OUTPUT_FILE
+
+# Measure performance under stress-ng
+run_perf "stress-ng"
+
+# Measure performance during idle
+run_perf "idle"
+
+echo "Performance metrics collected in $OUTPUT_FILE"
+
+chmod +x perf_stress_comparison.sh
+
+./perf_stress_comparison.sh
+
+cat perf_metrics_comparison.txt
+
+
+
+
